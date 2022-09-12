@@ -31,12 +31,11 @@ def index():
 def compute_guess():
     if request.method == "POST":
         client_data = request.get_json()
-        obs = [(word, obs) for word, obs in zip(client_data[0], client_data[1])]
+        obs = [(word, obs)
+               for word, obs in zip(client_data[0], client_data[1])]
         app.logger.info(obs)
         #TODO: Figure out how to get the data in the right format
-        partition = []
-        if obs:
-            partition = set(solver.get_partition(data, obs).index)
+        partition = set(solver.get_partition(data, obs).index)
         if len(partition) == 1:
             return jsonify(next(iter(partition)))
         else:
