@@ -1,6 +1,7 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 import importlib.resources as pkg_resources
 import pandas as pd
+import json
 
 from wordler import resources
 from wordler.utils import precompute_data, solver
@@ -9,8 +10,10 @@ from wordler.utils import precompute_data, solver
 app = Flask(__name__)
 data = None
 
+
 @app.before_first_request
 def load_data():
+    global data
     try:
         with pkg_resources.path(resources, "data.parquet") as pq:
             data = pd.read_parquet(pq)
@@ -23,8 +26,19 @@ def load_data():
 def index():
     return render_template('index.html', header='Wordle Solver')
 
-#TODO: Figure out how to get and send data between javascript and flask
-#https://stackabuse.com/how-to-get-and-parse-http-post-body-in-flask-json-and-form-data/
-#https://stackoverflow.com/questions/62027285/auto-refresh-div-with-dataframe-every-n-seconds/62028552#62028552
-#https://towardsdatascience.com/talking-to-python-from-javascript-flask-and-the-fetch-api-e0ef3573c451
-#https://www.digitalocean.com/community/tutorials/how-to-make-a-web-application-using-flask-in-python-3
+
+@app.route('/compute_guess', methods=['POST'])
+def compute_guess():
+    if request.method == "POST":
+        client_data = request.get_json()
+        obs = [(word, obs) for word, obs in zip(client_data[0], client_data[1])]
+        app.logger.info(obs)
+        #TODO: Figure out how to get the data in the right format
+        partition = []
+        if obs:
+            partition = set(solver.get_partition(data, obs).index)
+        if len(partition) == 1:
+            return jsonify(next(iter(partition)))
+        else:
+            guess, entropy = solver.get_optimal_guess(data, obs)
+            return jsonify(guess)

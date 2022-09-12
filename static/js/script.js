@@ -51,6 +51,51 @@ function setShade(event){
   event.currentTarget.style.backgroundColor = shadeMap[outputs[row_idx][letter_idx]]
 }
 
+function insertWord(word){
+      for (let i = 0; i < word.length; i++){
+        insertLetter(word[i])
+      }
+      guessesRemaining -= 1
+      nextLetter = 0
+      guesses.push([])
+      outputs.push([])
+}
+
+function readState(){
+  //TODO: Error checking and handling
+  let guess_words = []
+  let obs = []
+  for (let i=0; i<guesses.length; i++){
+    if (guesses[i].length == 5){
+      guess_words.push(guesses[i].join(''))
+    }
+  }
+  for (let j=0; j<outputs.length; j++){
+    if (outputs[j].length == 5 && !outputs[j].includes(-1)){
+      obs.push(parseInt(outputs[j].join(''), 3))
+    }
+  }
+  return [guess_words, obs]
+}
+
+function getGuess(){
+  //let server_data = [{"guess": "soare"}, {"obs": 0}]
+  let server_data = readState()
+  $.ajax({
+    type: "POST",
+    url: "/compute_guess",
+    data: JSON.stringify(server_data),
+    contentType: "application/json",
+    success: function(result) {
+      //alert(result["guess"])
+      insertWord(result)
+    },
+    error: function(xhr, status, error) {
+      alert('fail')
+    },
+  })
+}
+
 function initBoard() {
     let board = document.getElementById("game-board")
 
@@ -94,3 +139,7 @@ document.addEventListener("keyup", (e) => {
     insertLetter(pressedKey)
   }
 })
+
+// Listen for guess getting
+let guess_button = document.getElementById("get-guess")
+guess_button.addEventListener('click', getGuess)
