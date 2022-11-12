@@ -6,9 +6,10 @@ let guesses = [[]]
 let outputs = [[]]
 let nextLetter = 0
 let shadeMap = ['gray','yellow','green']
+let finished = false
 
-function insertLetter(letter, done=false){
-  if (nextLetter === 5){
+function insertLetter(letter, shade_idx=0){
+  if (nextLetter === WORD_LENGTH){
     return
   }
   letter = letter.toLowerCase()
@@ -17,13 +18,8 @@ function insertLetter(letter, done=false){
   let box = row.children[nextLetter]
   box.textContent = letter
   box.classList.add("filled-box")
-  if (done) {
-    box.disabled = true
-    box.style.backgroundColor = shadeMap[2]
-  } else {
-    box.disabled = false
-    box.style.backgroundColor = shadeMap[0]
-  }
+  box.disabled = false
+  box.style.backgroundColor = shadeMap[shade_idx]
   guesses[NUMBER_OF_GUESSES - guessesRemaining].push(letter)
   outputs[NUMBER_OF_GUESSES - guessesRemaining].push(0)
   nextLetter += 1
@@ -45,7 +41,6 @@ function deleteLetter(){
 }
 
 function setShade(event){
-  //alert(`${event.currentTarget.row_idx}, ${event.currentTarget.letter_idx}`)
   let row_idx = event.currentTarget.row_idx
   let letter_idx = event.currentTarget.letter_idx
   if (row_idx >= outputs.length){
@@ -56,14 +51,15 @@ function setShade(event){
   event.currentTarget.style.backgroundColor = shadeMap[outputs[row_idx][letter_idx]]
 }
 
-function insertWord(word, done=false){
-      for (let i = 0; i < word.length; i++){
-        insertLetter(word[i], done)
-      }
-      guessesRemaining -= 1
-      nextLetter = 0
-      guesses.push([])
-      outputs.push([])
+function insertWord(word, shade_idx=0){
+  // Clear any existing state for this row
+  nextLetter = 0
+  guesses[NUMBER_OF_GUESSES - guessesRemaining].length = 0
+  outputs[NUMBER_OF_GUESSES - guessesRemaining].length = 0
+  // Insert the new row
+  for (let i = 0; i < word.length; i++){
+    insertLetter(word[i], shade_idx)
+  }
 }
 
 function readState(){
@@ -83,32 +79,54 @@ function readState(){
   return {"guess_list": guess_words, "obs_list": obs}
 }
 
-function freezeState(){
-  for (let i = 0; i < (NUMBER_OF_GUESSES - guessesRemaining); i++) {
-      let row = document.getElementsByClassName("letter-row")[i]
+function freezeState(row_idx){
+  let row = document.getElementsByClassName("letter-row")[row_idx]
 
-      for (let j = 0; j < WORD_LENGTH; j++) {
-          let box = row.children[j]
-          box.disabled = true
-      }
-    }
+  for (let j = 0; j < WORD_LENGTH; j++) {
+      let box = row.children[j]
+      box.disabled = true
+  }
+}
+
+function stepRow(){
+  // Freeze the row
+  freezeState(NUMBER_OF_GUESSES - guessesRemaining)
+  // Carriage return
+  guessesRemaining -= 1
+  nextLetter = 0
+  guesses.push([])
+  outputs.push([])
 }
 
 function getGuess(){
-  freezeState()
+  // Do we need to move down a row?
+  if (nextLetter === WORD_LENGTH){
+    stepRow()
+  }
+  // Get guess word from server
   let server_data = readState()
   $.ajax({
     type: "POST",
     url: "/compute_guess",
     data: JSON.stringify(server_data),
     contentType: "application/json",
-    success: function(result) {
-      insertWord(result["guess"], result["done?"])
-    },
+    success: function(result){ processGuess(result) },
     error: function(xhr, status, error) {
       alert('fail')
     },
   })
+}
+
+function processGuess(result){
+  if (result["done?"]){
+    insertWord(result["guess"], 2)
+    // Freeze this row and next row
+    freezeState(NUMBER_OF_GUESSES - guessesRemaining - 1)
+    freezeState(NUMBER_OF_GUESSES - guessesRemaining)
+  }else{
+    insertWord(result["guess"])
+    // Add slot for next guess and coloring
+  }
 }
 
 function initBoard() {
@@ -137,7 +155,7 @@ initBoard()
 
 // Listen for keypresses
 document.addEventListener("keyup", (e) => {
-  if (guessesRemaining <= 0){
+  if (guessesRemaining <= 0 || finished){
     return
   }
 
