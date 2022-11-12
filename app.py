@@ -30,14 +30,23 @@ def index():
 @app.route('/compute_guess', methods=['POST'])
 def compute_guess():
     if request.method == "POST":
+        # Read client data
         client_data = request.get_json()
-        obs = [(word, obs)
-               for word, obs in zip(client_data[0], client_data[1])]
+        obs = [(word, obs) for word, obs in zip(client_data["guess_list"],
+                                                client_data["obs_list"])]
         app.logger.info(obs)
-        #TODO: Figure out how to get the data in the right format
+        # Get guesses from wordler
+        response = {"guess": None,
+                    "entropy": None,
+                    "done?": False,}
         partition = set(solver.get_partition(data, obs).index)
         if len(partition) == 1:
-            return jsonify(next(iter(partition)))
+            response["guess"] = next(iter(partition))
+            response["entropy"] = 0.0
+            response["done?"] = True
         else:
             guess, entropy = solver.get_optimal_guess(data, obs)
-            return jsonify(guess)
+            response["guess"] = guess
+            response["entropy"] = entropy
+
+        return jsonify(response)
