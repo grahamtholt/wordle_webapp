@@ -5,7 +5,7 @@ let guessesRemaining = NUMBER_OF_GUESSES
 let guesses = [[]]
 let outputs = [[]]
 let nextLetter = 0
-let shadeMap = ['gray','yellow','green']
+let shadeMap = ['rgb(120,124,126)','rgb(201,180,88)','rgb(106,170,100)']
 let finished = false
 
 function insertLetter(letter, shade_idx=0){
