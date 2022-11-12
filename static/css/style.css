@@ -31,8 +31,13 @@ h1 {
 .letter-box:active{
 }
 
+.letter-box:disabled{
+  color: white
+}
+
 .filled-box {
   border: 2px solid black;
+  color: white
 }
 
 .letter-row {

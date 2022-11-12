@@ -6,9 +6,8 @@ let guesses = [[]]
 let outputs = [[]]
 let nextLetter = 0
 let shadeMap = ['gray','yellow','green']
-let letter
 
-function insertLetter(letter){
+function insertLetter(letter, done=false){
   if (nextLetter === 5){
     return
   }
@@ -18,9 +17,15 @@ function insertLetter(letter){
   let box = row.children[nextLetter]
   box.textContent = letter
   box.classList.add("filled-box")
-  box.disabled = false
+  if (done) {
+    box.disabled = true
+    box.style.backgroundColor = shadeMap[2]
+  } else {
+    box.disabled = false
+    box.style.backgroundColor = shadeMap[0]
+  }
   guesses[NUMBER_OF_GUESSES - guessesRemaining].push(letter)
-  outputs[NUMBER_OF_GUESSES - guessesRemaining].push(-1)
+  outputs[NUMBER_OF_GUESSES - guessesRemaining].push(0)
   nextLetter += 1
 }
 
@@ -51,9 +56,9 @@ function setShade(event){
   event.currentTarget.style.backgroundColor = shadeMap[outputs[row_idx][letter_idx]]
 }
 
-function insertWord(word){
+function insertWord(word, done=false){
       for (let i = 0; i < word.length; i++){
-        insertLetter(word[i])
+        insertLetter(word[i], done)
       }
       guessesRemaining -= 1
       nextLetter = 0
@@ -75,11 +80,22 @@ function readState(){
       obs.push(parseInt(outputs[j].join(''), 3))
     }
   }
-  return [guess_words, obs]
+  return {"guess_list": guess_words, "obs_list": obs}
+}
+
+function freezeState(){
+  for (let i = 0; i < (NUMBER_OF_GUESSES - guessesRemaining); i++) {
+      let row = document.getElementsByClassName("letter-row")[i]
+
+      for (let j = 0; j < WORD_LENGTH; j++) {
+          let box = row.children[j]
+          box.disabled = true
+      }
+    }
 }
 
 function getGuess(){
-  //let server_data = [{"guess": "soare"}, {"obs": 0}]
+  freezeState()
   let server_data = readState()
   $.ajax({
     type: "POST",
@@ -87,8 +103,7 @@ function getGuess(){
     data: JSON.stringify(server_data),
     contentType: "application/json",
     success: function(result) {
-      //alert(result["guess"])
-      insertWord(result)
+      insertWord(result["guess"], result["done?"])
     },
     error: function(xhr, status, error) {
       alert('fail')
