@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import importlib.resources as pkg_resources
 import pandas as pd
+import pyarrow.parquet as pq
 import json
 
 from wordler import resources
@@ -15,8 +16,8 @@ data = None
 def load_data():
     global data
     try:
-        with pkg_resources.path(resources, "data.parquet") as pq:
-            data = pd.read_parquet(pq)
+        with pkg_resources.path(resources, "data.parquet") as fi:
+            data = pq.read_table(fi).to_pandas()
     except FileNotFoundError:
         data = precompute_data.run()
     app.logger.info("Data successfully loaded")
